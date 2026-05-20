@@ -784,6 +784,7 @@
 
   function _getTopVisibleSourceLine(fileContainer) {
     const candidates = [
+      ...qsa("tr", fileContainer),
       ...qsa("td[data-line-number][data-diff-side='RIGHT']", fileContainer),
       ...qsa("td[data-line-number][data-diff-side='right']", fileContainer),
       ...qsa("td[data-line-number]", fileContainer),
@@ -791,22 +792,26 @@
     ];
 
     let best = null;
-    let bestTop = Infinity;
+    let bestScore = Infinity;
 
     for (const el of candidates) {
       if (!(el instanceof HTMLElement)) continue;
       if (el.offsetParent === null) continue;
 
-      const rect = el.getBoundingClientRect();
+      const lineNode = el.matches?.("[data-line-number]") ? el : qs("[data-line-number]", el);
+      if (!lineNode) continue;
+
+      const rect = (el.tagName === "TR" ? el : lineNode).getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) continue;
       if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
 
-      const lineNum = parseInt(el.getAttribute("data-line-number") || "", 10);
+      const lineNum = parseInt(lineNode.getAttribute("data-line-number") || "", 10);
       if (!lineNum || Number.isNaN(lineNum)) continue;
 
-      if (rect.top < bestTop) {
+      const score = Math.abs(rect.top);
+      if (score < bestScore) {
         best = lineNum;
-        bestTop = rect.top;
+        bestScore = score;
       }
     }
 
