@@ -781,6 +781,9 @@
   const BACK_TO_RICH_BTN_CLASS = "md-review-back-to-rich-btn";
   const _pendingLazyLineWatchers = new Set();
   const _pendingRichScrollByDigest = new Map();
+  const _pendingSourceLineByDigest = new Map();
+  const _pendingRichViewLoads = new Map();
+  const _installedViewToggleHandlers = new WeakSet();
 
   function _getTopVisibleSourceLine(fileContainer) {
     const candidates = [
@@ -818,9 +821,42 @@
     return best;
   }
 
+  function _getTopVisibleRichLine(article) {
+    const candidates = qsa("[data-md-review-line-number]", article).map((el) => {
+      const lineNum = parseInt(el.getAttribute("data-md-review-line-number") || "", 10);
+      if (!Number.isInteger(lineNum) || lineNum <= 0) return null;
+      return { el, lineNum };
+    }).filter(Boolean);
+
+    let best = null;
+    let bestScore = Infinity;
+
+    for (const candidate of candidates) {
+      if (!(candidate.el instanceof HTMLElement)) continue;
+      if (candidate.el.offsetParent === null) continue;
+
+      const rect = candidate.el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+
+      const score = Math.abs(rect.top);
+      if (score < bestScore) {
+        best = candidate.lineNum;
+        bestScore = score;
+      }
+    }
+
+    return best;
+  }
+
   function _queueRichViewScroll(pathDigest, lineNum) {
     if (!_isValidPathDigest(pathDigest) || !Number.isInteger(lineNum) || lineNum <= 0) return;
     _pendingRichScrollByDigest.set(pathDigest, lineNum);
+  }
+
+  function _queueSourceViewFocus(pathDigest, lineNum) {
+    if (!_isValidPathDigest(pathDigest) || !Number.isInteger(lineNum) || lineNum <= 0) return;
+    _pendingSourceLineByDigest.set(pathDigest, lineNum);
   }
 
   function _findNearestRichBlockForLine(article, targetLine) {
@@ -886,6 +922,73 @@
     if (richDiffBtn) {
       richDiffBtn.click();
     }
+  }
+
+  function _restorePendingSourceFocus(fileContainer, pathDigest, attempt = 0) {
+    if (!_isValidPathDigest(pathDigest)) return false;
+
+    const lineNum = _pendingSourceLineByDigest.get(pathDigest);
+    if (!Number.isInteger(lineNum) || lineNum <= 0) return false;
+
+    if (!_isSourceDiffVisible(fileContainer)) {
+      if (attempt < 20) {
+        setTimeout(() => _restorePendingSourceFocus(fileContainer, pathDigest, attempt + 1), 250);
+      }
+      return false;
+    }
+
+    const focused = _focusSourceLine(fileContainer, pathDigest, lineNum);
+    if (focused) {
+      _pendingSourceLineByDigest.delete(pathDigest);
+    }
+    return focused;
+  }
+
+  function _installNativeViewToggleHandlers(fileContainer, pathDigest) {
+    if (_installedViewToggleHandlers.has(fileContainer)) return;
+    _installedViewToggleHandlers.add(fileContainer);
+
+    fileContainer.addEventListener("click", (event) => {
+      const clicked = event.target?.closest?.("button, [role='tab'], a");
+      if (!(clicked instanceof HTMLElement)) return;
+
+      const label = _getControlLabel(clicked);
+      if (!label) return;
+
+      if (label.includes("source") || label === "code" || label.includes("source diff") || label.includes("code diff")) {
+        if (!_isRichDiffVisible(fileContainer)) return;
+        const article = qs("article", fileContainer);
+        const pendingLine = _pendingSourceLineByDigest.get(pathDigest);
+        const topRichLine = Number.isInteger(pendingLine) && pendingLine > 0
+          ? pendingLine
+          : _getTopVisibleRichLine(article);
+        if (Number.isInteger(topRichLine) && topRichLine > 0) {
+          _queueSourceViewFocus(pathDigest, topRichLine);
+        }
+      }
+
+      if (label.includes("rich") || label.includes("render")) {
+        const topLine = _getTopVisibleSourceLine(fileContainer);
+        if (Number.isInteger(topLine) && topLine > 0) {
+          _queueRichViewScroll(pathDigest, topLine);
+        }
+      }
+    }, true);
+  }
+
+  function _maybeAutoLoadRichView(fileContainer, pathDigest) {
+    if (!_isExtensionEnabled()) return;
+    if (_isRichDiffVisible(fileContainer)) return;
+
+    const richBtn = _getRichDiffButton(fileContainer);
+    if (!richBtn) return;
+
+    const now = Date.now();
+    const lastAttempt = _pendingRichViewLoads.get(pathDigest) || 0;
+    if (now - lastAttempt < 1200) return;
+
+    _pendingRichViewLoads.set(pathDigest, now);
+    richBtn.click();
   }
 
   function _getPreferredDiffHeaderRow(fileContainer) {
@@ -1372,6 +1475,7 @@
       // Switch to source diff by clicking the segmented control button
       const fileContainer = article.closest("div[id^='diff-']");
       if (fileContainer) {
+        _queueSourceViewFocus(pathDigest, lineNum);
         _switchToSourceAndFocus(fileContainer, pathDigest, lineNum, markersMap);
       }
     };
@@ -1675,6 +1779,7 @@
   /* ---------------------------------------------------------------- */
 
   const INIT_ATTR = "data-md-review-initialized";
+  const AUTO_RICH_ATTR = "data-md-review-auto-rich-attempted";
   const ACTIVE_INDICATOR_ID = "md-review-active-indicator";
   const TOGGLE_STORAGE_KEY = "md-review-extension-enabled";
 
@@ -1728,6 +1833,9 @@
     // 5. Clear enhancement and init markers so re-enabling works
     qsa(`[${ENHANCED_ATTR}]`).forEach(el => el.removeAttribute(ENHANCED_ATTR));
     qsa(`[${INIT_ATTR}]`).forEach(el => el.removeAttribute(INIT_ATTR));
+    qsa(`[${AUTO_RICH_ATTR}]`).forEach(el => el.removeAttribute(AUTO_RICH_ATTR));
+    _pendingRichViewLoads.clear();
+    _pendingSourceLineByDigest.clear();
 
     setTimeout(() => { _pauseInProgress = false; }, 200);
   }
@@ -1834,6 +1942,28 @@
 
       hasMarkdownFiles = true;
       _syncLiveEditorActivity(container, pathDigest);
+      _installNativeViewToggleHandlers(container, pathDigest);
+
+      const autoRichAttempted = container.getAttribute(AUTO_RICH_ATTR) === "true";
+      if (!autoRichAttempted) {
+        if (!_isRichDiffVisible(container)) {
+          _maybeAutoLoadRichView(container, pathDigest);
+          container.setAttribute(AUTO_RICH_ATTR, "true");
+          continue;
+        }
+
+        container.setAttribute(AUTO_RICH_ATTR, "true");
+      }
+
+      if (!_isRichDiffVisible(container)) {
+        const pendingSourceLine = _pendingSourceLineByDigest.get(pathDigest);
+        if (Number.isInteger(pendingSourceLine) && pendingSourceLine > 0) {
+          _restorePendingSourceFocus(container, pathDigest);
+        }
+        continue;
+      }
+
+      _pendingRichViewLoads.delete(pathDigest);
 
       const markersMap = summary.markersMap || {};
 
@@ -1865,11 +1995,15 @@
   document.addEventListener("turbo:load", () => {
     _localCommentActivityByDigest.clear();
     _suppressedCommentLinesByDigest.clear();
+    _pendingRichViewLoads.clear();
+    _pendingSourceLineByDigest.clear();
     setTimeout(processFiles, 2000);
   });
   document.addEventListener("pjax:end", () => {
     _localCommentActivityByDigest.clear();
     _suppressedCommentLinesByDigest.clear();
+    _pendingRichViewLoads.clear();
+    _pendingSourceLineByDigest.clear();
     setTimeout(processFiles, 2000);
   });
 
