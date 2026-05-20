@@ -1212,7 +1212,7 @@
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(tryFocus, 180);
+          setTimeout(tryFocus, 50);
           return;
         }
       }
@@ -1231,14 +1231,14 @@
 
       if (attempts < maxAttempts) {
         const expanded = _expandCollapsedSourceSections(fileContainer);
-        setTimeout(tryFocus, expanded ? 280 : 140);
+        setTimeout(tryFocus, expanded ? 50 : 50);
         return;
       }
 
       _watchForLazySourceLine(fileContainer, pathDigest, lineNum);
     }
 
-    setTimeout(tryFocus, 120);
+    setTimeout(tryFocus, 50);
   }
 
   function _isRichDiffVisible(fileContainer) {
@@ -1265,7 +1265,7 @@
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(tryOpenSourceAndFocus, 120);
+          setTimeout(tryOpenSourceAndFocus, 50);
           return;
         }
       }
