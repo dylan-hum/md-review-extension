@@ -780,13 +780,103 @@
   const SOURCE_COMMENTED_LINE_CLASS = "md-review-commented-line";
   const BACK_TO_RICH_BTN_CLASS = "md-review-back-to-rich-btn";
   const _pendingLazyLineWatchers = new Set();
+  const _pendingRichScrollByDigest = new Map();
+
+  function _getTopVisibleSourceLine(fileContainer) {
+    const candidates = [
+      ...qsa("td[data-line-number][data-diff-side='RIGHT']", fileContainer),
+      ...qsa("td[data-line-number][data-diff-side='right']", fileContainer),
+      ...qsa("td[data-line-number]", fileContainer),
+      ...qsa("a[data-line-number]", fileContainer),
+    ];
+
+    let best = null;
+    let bestTop = Infinity;
+
+    for (const el of candidates) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.offsetParent === null) continue;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) continue;
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) continue;
+
+      const lineNum = parseInt(el.getAttribute("data-line-number") || "", 10);
+      if (!lineNum || Number.isNaN(lineNum)) continue;
+
+      if (rect.top < bestTop) {
+        best = lineNum;
+        bestTop = rect.top;
+      }
+    }
+
+    return best;
+  }
+
+  function _queueRichViewScroll(pathDigest, lineNum) {
+    if (!_isValidPathDigest(pathDigest) || !Number.isInteger(lineNum) || lineNum <= 0) return;
+    _pendingRichScrollByDigest.set(pathDigest, lineNum);
+  }
+
+  function _findNearestRichBlockForLine(article, targetLine) {
+    const candidates = qsa("[data-md-review-line-number]", article).map((el) => {
+      const lineNum = parseInt(el.getAttribute("data-md-review-line-number") || "", 10);
+      return Number.isInteger(lineNum) && lineNum > 0 ? { el, lineNum } : null;
+    }).filter(Boolean);
+
+    if (candidates.length === 0) return null;
+
+    let best = candidates[0];
+    let bestDistance = Math.abs(best.lineNum - targetLine);
+
+    for (let i = 1; i < candidates.length; i++) {
+      const candidate = candidates[i];
+      const distance = Math.abs(candidate.lineNum - targetLine);
+      if (distance < bestDistance || (distance === bestDistance && candidate.lineNum < best.lineNum)) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    }
+
+    return best.el.closest("tr") || best.el;
+  }
+
+  function _applyPendingRichViewScroll(article, pathDigest, attempt = 0) {
+    if (!_isValidPathDigest(pathDigest)) return false;
+
+    const targetLine = _pendingRichScrollByDigest.get(pathDigest);
+    if (!targetLine) return false;
+
+    if (!article?.isConnected) return false;
+
+    const target = _findNearestRichBlockForLine(article, targetLine);
+    if (!target) return false;
+
+    const applied = target.getBoundingClientRect().height > 0;
+    if (applied) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      _pendingRichScrollByDigest.delete(pathDigest);
+      return true;
+    }
+
+    if (attempt < 6) {
+      setTimeout(() => _applyPendingRichViewScroll(article, pathDigest, attempt + 1), 200);
+    }
+
+    return false;
+  }
 
   function _clearSourceLineHighlight(fileContainer) {
     const highlighted = qsa(`.${SOURCE_SELECTED_LINE_CLASS}`, fileContainer);
     highlighted.forEach(el => el.classList.remove(SOURCE_SELECTED_LINE_CLASS));
   }
 
-  function _switchBackToRich(fileContainer) {
+  function _switchBackToRich(fileContainer, pathDigest) {
+    const topLine = _getTopVisibleSourceLine(fileContainer);
+    if (Number.isInteger(topLine) && topLine > 0) {
+      _queueRichViewScroll(pathDigest, topLine);
+    }
+
     const richDiffBtn = _getRichDiffButton(fileContainer);
     if (richDiffBtn) {
       richDiffBtn.click();
@@ -828,7 +918,8 @@
       button.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        _switchBackToRich(fileContainer);
+        const pathDigest = String((fileContainer.id || "").replace(/^diff-/, "")).toLowerCase();
+        _switchBackToRich(fileContainer, pathDigest);
       });
     }
 
@@ -1109,6 +1200,7 @@
       _addCommentBadges(article, markersMap, pathDigest);
       _decorateCommentedBlocks(article, markersMap, lineMap, pathDigest);
       _decorateSourceCommentLines(container, markersMap, pathDigest);
+      _applyPendingRichViewScroll(article, pathDigest);
     }
 
     // Retry until article appears
