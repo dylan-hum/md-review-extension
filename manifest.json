@@ -34,10 +34,7 @@
   "web_accessible_resources": [
     {
       "resources": ["icons/*"],
-      "matches": [
-        "https://github.com/*/*/pull/*/files*",
-        "https://github.com/*/*/pull/*/changes*"
-      ]
+      "matches": ["https://github.com/*"]
     }
   ]
 }
