@@ -937,11 +937,9 @@
       return false;
     }
 
-    const focused = _focusSourceLine(fileContainer, pathDigest, lineNum);
-    if (focused) {
-      _pendingSourceLineByDigest.delete(pathDigest);
-    }
-    return focused;
+    _pendingSourceLineByDigest.delete(pathDigest);
+    _focusSourceLine(fileContainer, pathDigest, lineNum);
+    return true;
   }
 
   function _installNativeViewToggleHandlers(fileContainer, pathDigest) {
