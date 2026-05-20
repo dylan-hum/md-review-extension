@@ -354,6 +354,23 @@
     return sample.includes("<!doctype html") || sample.includes("<html");
   }
 
+  function _createCommentBadgeIcon(size = 16) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("width", String(size));
+    svg.setAttribute("height", String(size));
+    svg.setAttribute("fill", "currentColor");
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute(
+      "d",
+      "M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"
+    );
+    svg.appendChild(path);
+
+    return svg;
+  }
+
   function _isMarkdownPath(path) {
     return typeof path === "string" && /\.md$/i.test(path.trim());
   }
@@ -459,7 +476,6 @@
 
     const urls = _getRawUrlCandidates(filePath, container);
     if (urls.length === 0) {
-      console.warn("[MD Review] No raw URL candidates for", filePath);
       _fileRetryAfter.set(filePath, Date.now() + FILE_FETCH_RETRY_MS);
       return null;
     }
@@ -476,22 +492,18 @@
         }
 
         if (!resp.ok) {
-          console.warn("[MD Review] Fetch failed for", filePath, resp.status, url);
           continue;
         }
 
         const text = await resp.text();
         if (!text || _looksLikeHtml(text)) {
-          console.warn("[MD Review] Non-raw response for", filePath, url);
           continue;
         }
 
         _fileCache.set(url, text);
         _fileRetryAfter.delete(filePath);
-        console.log("[MD Review] Fetched", filePath, "from", url, ":", text.split("\n").length, "lines");
         return text;
-      } catch (e) {
-        console.warn("[MD Review] Fetch error for", filePath, url, e);
+      } catch {
       }
     }
 
@@ -936,6 +948,7 @@
   const BADGE_CLASS = "md-review-comment-badge";
   const ENHANCED_ATTR = "data-md-review-enhanced";
   const _activeEnhanceObservers = [];
+  const _richClickHandlers = new WeakMap();
 
   /**
    * Wait for the rich diff article to appear, then enhance it.
@@ -953,7 +966,6 @@
       const fileContent = await _fetchFileContent(filePath, container);
       const lineMap = _buildFullLineMap(fileContent);
       _lineMapByDigest.set(pathDigest, lineMap);
-      console.log("[MD Review] Full lineMap for", filePath, ":", lineMap.size, "keys");
 
       _makeClickable(article, pathDigest, lineMap, markersMap);
       _addCommentBadges(article, markersMap, pathDigest);
@@ -1071,7 +1083,12 @@
     // Add a subtle indicator and click handler to block-level elements
     article.classList.add("md-review-clickable");
 
-    article.addEventListener("click", (e) => {
+    const existingHandler = _richClickHandlers.get(article);
+    if (existingHandler) {
+      article.removeEventListener("click", existingHandler);
+    }
+
+    const handleRichClick = (e) => {
       // Don't do anything if extension is paused
       if (!_isExtensionEnabled()) return;
 
@@ -1085,7 +1102,6 @@
 
       const blockTarget = e.target.closest("li, p, h1, h2, h3, h4, h5, h6, tr, blockquote, pre") || e.target;
       const clickedText = (blockTarget.textContent || "").trim();
-      console.log("[MD Review] Click on:", blockTarget.tagName, clickedText.substring(0, 80));
 
       // Prefer source position data when available.
       let lineNum = _parseSourcePosLine(blockTarget);
@@ -1118,19 +1134,15 @@
 
       // If still no match, find the nearest line in the map by looking
       // at ALL map entries and finding the closest textual neighbor
-      if (!lineNum && lineMap.size > 0) {
-        // Just navigate to the file's diff without a specific line
-        console.log("[MD Review] No line match found, navigating to file diff");
-      }
-
-      console.log("[MD Review] Resolved lineNum:", lineNum);
-
       // Switch to source diff by clicking the segmented control button
       const fileContainer = article.closest("div[id^='diff-']");
       if (fileContainer) {
         _switchToSourceAndFocus(fileContainer, pathDigest, lineNum, markersMap);
       }
-    });
+    };
+
+    article.addEventListener("click", handleRichClick);
+    _richClickHandlers.set(article, handleRichClick);
   }
 
   function _isThreadResolved(thread) {
@@ -1329,9 +1341,11 @@
         className: "md-review-margin-badge",
         title: title,
       });
-      badge.innerHTML =
-        `<svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path></svg>` +
-        `<sup class="md-review-margin-badge__count">${stats.total}</sup>`;
+      badge.appendChild(_createCommentBadgeIcon(16));
+      badge.appendChild(createElement("sup", {
+        className: "md-review-margin-badge__count",
+        textContent: String(stats.total),
+      }));
       block.prepend(badge);
     }
   }
@@ -1375,12 +1389,13 @@
 
       const badge = createElement("a", {
         className: BADGE_CLASS,
-        title: `${commentCount} comment${commentCount > 1 ? "s" : ""}${resolvedLabel} on line ${lineNum} — click to view in diff`,
+        title: `${commentCount} comment${commentCount > 1 ? "s" : ""}${resolvedLabel} on line ${lineNum} - click to view in diff`,
         href: `#diff-${pathDigest}R${lineNum}`,
       });
-      badge.innerHTML =
-        `<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M1 2.75C1 1.784 1.784 1 2.75 1h10.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 13.25 12H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 13.543V12H2.75A1.75 1.75 0 0 1 1 10.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path></svg>` +
-        `<span>Line ${lineNum}</span>`;
+      badge.appendChild(_createCommentBadgeIcon(14));
+      badge.appendChild(createElement("span", {
+        textContent: `Line ${lineNum}`,
+      }));
 
       badge.addEventListener("click", (e) => {
         e.preventDefault();
@@ -1396,7 +1411,7 @@
       const bar = createElement("div", { className: "md-review-comment-bar" });
       const label = createElement("span", {
         className: "md-review-comment-bar__label",
-        textContent: `💬 ${badges.length} line${badges.length > 1 ? "s" : ""} · ${totalComments} comments${totalResolved > 0 ? ` (${totalResolved} resolved)` : ""}`,
+        textContent: `Comments ${badges.length} line${badges.length > 1 ? "s" : ""} - ${totalComments} comments${totalResolved > 0 ? ` (${totalResolved} resolved)` : ""}`,
       });
       bar.appendChild(label);
       badges.forEach(b => bar.appendChild(b));

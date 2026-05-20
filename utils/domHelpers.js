@@ -41,8 +41,6 @@ var DomHelpers = (() => {
         el.className = value;
       } else if (key === "textContent") {
         el.textContent = value;
-      } else if (key === "innerHTML") {
-        el.innerHTML = value;
       } else if (key.startsWith("data-") || key.startsWith("data_")) {
         el.setAttribute(key.replace(/_/g, "-"), value);
       } else {
