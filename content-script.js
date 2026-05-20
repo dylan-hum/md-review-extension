@@ -1332,9 +1332,9 @@
         return;
       }
       attempts++;
-      if (attempts < 20) setTimeout(tryEnhance, 500);
+      if (attempts < 40) setTimeout(tryEnhance, 100);
     }
-    setTimeout(tryEnhance, 500);
+    setTimeout(tryEnhance, 100);
 
     // Watch for article re-renders (user toggles view modes)
     const observer = new MutationObserver(() => {
@@ -1997,9 +1997,9 @@
 
   // Run after a delay to let GitHub's React app render
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => setTimeout(processFiles, 2000));
+    document.addEventListener("DOMContentLoaded", () => setTimeout(processFiles, 150));
   } else {
-    setTimeout(processFiles, 2000);
+    setTimeout(processFiles, 150);
   }
 
   // Re-run on navigation
@@ -2008,14 +2008,14 @@
     _suppressedCommentLinesByDigest.clear();
     _pendingRichViewLoads.clear();
     _pendingSourceLineByDigest.clear();
-    setTimeout(processFiles, 2000);
+    setTimeout(processFiles, 150);
   });
   document.addEventListener("pjax:end", () => {
     _localCommentActivityByDigest.clear();
     _suppressedCommentLinesByDigest.clear();
     _pendingRichViewLoads.clear();
     _pendingSourceLineByDigest.clear();
-    setTimeout(processFiles, 2000);
+    setTimeout(processFiles, 150);
   });
 
   // Re-run when new diff containers load
