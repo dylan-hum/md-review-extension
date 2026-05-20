@@ -2,6 +2,62 @@
    Markdown Review Extension — Styles
    ============================================================ */
 
+:root {
+  --md-review-line-label-color: #57606a;
+  --md-review-line-outline-color: #54aeff;
+  --md-review-commented-line-inset: #54aeff;
+  --md-review-comment-bar-bg: #ddf4ff;
+  --md-review-comment-bar-border: #54aeff;
+  --md-review-comment-bar-text: #0969da;
+  --md-review-comment-badge-bg: #ffffff;
+  --md-review-comment-badge-border: #d0d7de;
+  --md-review-comment-badge-text: #0969da;
+  --md-review-comment-badge-hover-bg: #ddf4ff;
+  --md-review-comment-badge-hover-border: #54aeff;
+  --md-review-back-to-rich-bg: #ffffff;
+  --md-review-back-to-rich-border: #d0d7de;
+  --md-review-back-to-rich-text: #0969da;
+  --md-review-back-to-rich-hover-bg: #ddf4ff;
+  --md-review-back-to-rich-hover-border: #54aeff;
+  --md-review-active-bg: #1f6feb;
+  --md-review-active-border: #0d419d;
+  --md-review-active-text: #ffffff;
+  --md-review-active-shadow: 0 3px 10px rgba(31, 111, 235, 0.35);
+  --md-review-active-icon-bg: #ffffff;
+  --md-review-active-paused-bg: #6e7781;
+  --md-review-active-paused-border: #57606a;
+  --md-review-active-paused-text: #ffffff;
+  --md-review-active-paused-shadow: 0 3px 10px rgba(110, 119, 129, 0.3);
+  --md-review-selected-line-bg: var(--diffBlob-selectedLine-bgColor, #fff8c5);
+}
+
+:root.md-review-theme-dark,
+:root[data-color-mode="dark"],
+:root.dark {
+  --md-review-line-label-color: #8b949e;
+  --md-review-comment-bar-bg: #0c2d6b;
+  --md-review-comment-bar-border: #1f6feb;
+  --md-review-comment-bar-text: #58a6ff;
+  --md-review-comment-badge-bg: #161b22;
+  --md-review-comment-badge-border: #30363d;
+  --md-review-comment-badge-text: #58a6ff;
+  --md-review-comment-badge-hover-bg: #0c2d6b;
+  --md-review-comment-badge-hover-border: #1f6feb;
+  --md-review-back-to-rich-bg: #161b22;
+  --md-review-back-to-rich-border: #30363d;
+  --md-review-back-to-rich-text: #58a6ff;
+  --md-review-back-to-rich-hover-bg: #0c2d6b;
+  --md-review-back-to-rich-hover-border: #1f6feb;
+  --md-review-active-bg: #58a6ff;
+  --md-review-active-border: #1f6feb;
+  --md-review-active-text: #0d1117;
+  --md-review-active-shadow: 0 3px 12px rgba(88, 166, 255, 0.35);
+  --md-review-active-paused-bg: #484f58;
+  --md-review-active-paused-border: #30363d;
+  --md-review-active-paused-text: #8b949e;
+  --md-review-active-paused-shadow: 0 3px 10px rgba(72, 79, 88, 0.3);
+}
+
 /* ---------- Clickable rich diff article ---------- */
 
 .md-review-clickable {
@@ -38,7 +94,7 @@
   font-size: 11px;
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
-  color: #57606a;
+  color: var(--md-review-line-label-color);
 }
 
 .md-review-clickable .md-review-line-annotated::before {
@@ -47,7 +103,7 @@
 
 /* Lines with comments get a permanent dotted border */
 .md-review-line-has-comments {
-  outline: 1px dashed #54aeff;
+  outline: 1px dashed var(--md-review-line-outline-color);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -59,7 +115,7 @@
   display: inline-flex;
   align-items: flex-start;
   cursor: default;
-  color: #0969da;
+  color: var(--md-review-comment-badge-text);
   line-height: 1;
 }
 
@@ -76,24 +132,9 @@
   line-height: 1;
   min-width: 8px;
   text-align: center;
-  color: #0969da;
+  color: var(--md-review-comment-badge-text);
   margin-left: 2px;
   margin-top: -2px;
-}
-
-[data-color-mode="dark"] .md-review-margin-badge,
-.dark .md-review-margin-badge {
-  color: #58a6ff;
-}
-
-[data-color-mode="dark"] .md-review-margin-badge__count,
-.dark .md-review-margin-badge__count {
-  color: #58a6ff;
-}
-
-[data-color-mode="dark"] .md-review-line-annotated::before,
-.dark .md-review-line-annotated::before {
-  color: #8b949e;
 }
 
 /* Highlight the innermost block elements on hover */
@@ -108,7 +149,7 @@
 .md-review-clickable tr:hover,
 .md-review-clickable blockquote:hover,
 .md-review-clickable pre:hover {
-  outline: 1px dashed #54aeff;
+  outline: 1px dashed var(--md-review-line-outline-color);
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -122,18 +163,11 @@
   flex-wrap: wrap;
   padding: 10px 16px;
   margin: 0 0 8px;
-  background: #ddf4ff;
-  border: 1px solid #54aeff;
+  background: var(--md-review-comment-bar-bg);
+  border: 1px solid var(--md-review-comment-bar-border);
   border-radius: 6px;
   font-size: 13px;
-  color: #0969da;
-}
-
-[data-color-mode="dark"] .md-review-comment-bar,
-.dark .md-review-comment-bar {
-  background: #0c2d6b;
-  border-color: #1f6feb;
-  color: #58a6ff;
+  color: var(--md-review-comment-bar-text);
 }
 
 .md-review-comment-bar__label {
@@ -148,33 +182,20 @@
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  background: #ffffff;
-  border: 1px solid #d0d7de;
+  background: var(--md-review-comment-badge-bg);
+  border: 1px solid var(--md-review-comment-badge-border);
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  color: #0969da;
+  color: var(--md-review-comment-badge-text);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 
 .md-review-comment-badge:hover {
-  background: #ddf4ff;
-  border-color: #54aeff;
-}
-
-[data-color-mode="dark"] .md-review-comment-badge,
-.dark .md-review-comment-badge {
-  background: #161b22;
-  border-color: #30363d;
-  color: #58a6ff;
-}
-
-[data-color-mode="dark"] .md-review-comment-badge:hover,
-.dark .md-review-comment-badge:hover {
-  background: #0c2d6b;
-  border-color: #1f6feb;
+  background: var(--md-review-comment-badge-hover-bg);
+  border-color: var(--md-review-comment-badge-hover-border);
 }
 
 .md-review-comment-badge svg {
@@ -186,18 +207,18 @@
 .md-review-back-to-rich-btn {
   margin-left: 8px;
   padding: 4px 10px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--md-review-back-to-rich-border);
   border-radius: 6px;
-  background: #ffffff;
-  color: #0969da;
+  background: var(--md-review-back-to-rich-bg);
+  color: var(--md-review-back-to-rich-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .md-review-back-to-rich-btn:hover {
-  background: #ddf4ff;
-  border-color: #54aeff;
+  background: var(--md-review-back-to-rich-hover-bg);
+  border-color: var(--md-review-back-to-rich-hover-border);
 }
 
 .md-review-back-to-rich-slot {
@@ -214,14 +235,14 @@
   align-items: center;
   gap: 6px;
   padding: 7px 12px;
-  border: 2px solid #0d419d;
+  border: 2px solid var(--md-review-active-border);
   border-radius: 999px;
-  background: #1f6feb;
-  color: #ffffff;
+  background: var(--md-review-active-bg);
+  color: var(--md-review-active-text);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
-  box-shadow: 0 3px 10px rgba(31, 111, 235, 0.35);
+  box-shadow: var(--md-review-active-shadow);
   cursor: pointer;
   user-select: none;
   transition: background 0.2s, border-color 0.2s, opacity 0.2s;
@@ -231,7 +252,7 @@
   width: 18px;
   height: 18px;
   border-radius: 3px;
-  background: #ffffff;
+  background: var(--md-review-active-icon-bg);
   padding: 1px;
   flex-shrink: 0;
 }
@@ -245,46 +266,18 @@
 }
 
 .md-review-active-indicator--paused {
-  background: #6e7781;
-  border-color: #57606a;
-  box-shadow: 0 3px 10px rgba(110, 119, 129, 0.3);
-}
-
-[data-color-mode="dark"] .md-review-back-to-rich-btn,
-.dark .md-review-back-to-rich-btn {
-  background: #161b22;
-  border-color: #30363d;
-  color: #58a6ff;
-}
-
-[data-color-mode="dark"] .md-review-active-indicator,
-.dark .md-review-active-indicator {
-  background: #58a6ff;
-  border-color: #1f6feb;
-  color: #0d1117;
-  box-shadow: 0 3px 12px rgba(88, 166, 255, 0.35);
-}
-
-[data-color-mode="dark"] .md-review-active-indicator--paused,
-.dark .md-review-active-indicator--paused {
-  background: #484f58;
-  border-color: #30363d;
-  color: #8b949e;
-  box-shadow: 0 3px 10px rgba(72, 79, 88, 0.3);
-}
-
-[data-color-mode="dark"] .md-review-back-to-rich-btn:hover,
-.dark .md-review-back-to-rich-btn:hover {
-  background: #0c2d6b;
-  border-color: #1f6feb;
+  background: var(--md-review-active-paused-bg);
+  border-color: var(--md-review-active-paused-border);
+  color: var(--md-review-active-paused-text);
+  box-shadow: var(--md-review-active-paused-shadow);
 }
 
 tr.md-review-commented-line > td {
-  box-shadow: inset 3px 0 0 #54aeff;
+  box-shadow: inset 3px 0 0 var(--md-review-commented-line-inset);
 }
 
 tr.md-review-selected-line > td,
 td.md-review-selected-line,
 a.md-review-selected-line {
-  background: var(--diffBlob-selectedLine-bgColor, #fff8c5) !important;
+  background: var(--md-review-selected-line-bg) !important;
 }

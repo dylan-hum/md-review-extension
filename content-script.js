@@ -354,6 +354,67 @@
     return sample.includes("<!doctype html") || sample.includes("<html");
   }
 
+  const THEME_DARK_CLASS = "md-review-theme-dark";
+  const GITHUB_DARK_MODE_SELECTORS = [
+    "[data-color-mode='dark']",
+    ".dark",
+  ];
+
+  function _isGitHubDarkMode() {
+    if (typeof document === "undefined") return false;
+
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (root?.getAttribute("data-color-mode") === "dark") return true;
+    if (body?.getAttribute("data-color-mode") === "dark") return true;
+
+    if (root?.classList.contains("dark") || body?.classList.contains("dark")) return true;
+
+    const matchingSelector = GITHUB_DARK_MODE_SELECTORS.some((selector) => {
+      return Boolean(root?.matches?.(selector) || body?.matches?.(selector));
+    });
+    if (matchingSelector) return true;
+
+    return false;
+  }
+
+  function _syncThemeMode() {
+    const root = document.documentElement;
+    if (!root) return;
+    root.classList.toggle(THEME_DARK_CLASS, _isGitHubDarkMode());
+  }
+
+  function _installThemeObserver() {
+    _syncThemeMode();
+
+    const observer = new MutationObserver(() => {
+      _syncThemeMode();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-color-mode"],
+      subtree: false,
+    });
+
+    const attachBodyObserver = () => {
+      if (!document.body) return;
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["class", "data-color-mode"],
+        subtree: false,
+      });
+    };
+
+    attachBodyObserver();
+    document.addEventListener("DOMContentLoaded", attachBodyObserver, { once: true });
+
+    document.addEventListener("DOMContentLoaded", _syncThemeMode, { once: true });
+    document.addEventListener("turbo:load", _syncThemeMode);
+    document.addEventListener("pjax:end", _syncThemeMode);
+  }
+
   function _createCommentBadgeIcon(size = 16) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 16 16");
@@ -1443,6 +1504,7 @@
   const ACTIVE_INDICATOR_ID = "md-review-active-indicator";
   const TOGGLE_STORAGE_KEY = "md-review-extension-enabled";
 
+  _installThemeObserver();
   _installCommentActivityTracking();
 
   function _isExtensionEnabled() {
