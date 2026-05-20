@@ -1,6 +1,6 @@
 {
   "name": "markdown-rich-review",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "description": "Markdown Rich Review — Chrome/Edge MV3 browser extension for reviewing Markdown files in GitHub PR diffs.",
   "scripts": {

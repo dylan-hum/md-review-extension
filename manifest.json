@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Markdown Rich Review for GitHub Pull Requests",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Enhances GitHub PR diff view for Markdown files with rich preview, line-level comment indicators, and click-to-source navigation.",
   "permissions": [],
   "content_scripts": [
