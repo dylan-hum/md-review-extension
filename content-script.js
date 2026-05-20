@@ -359,6 +359,71 @@
     "[data-color-mode='dark']",
     ".dark",
   ];
+  let _lastLoggedThemeMode = null;
+
+  function _parseCssColor(color) {
+    const value = String(color || "").trim().toLowerCase();
+    if (!value) return null;
+
+    const hex = value.match(/^#([0-9a-f]{3,8})$/i);
+    if (hex) {
+      const digits = hex[1];
+      const expand = (segment) => segment.length === 1 ? segment + segment : segment;
+
+      if (digits.length === 3 || digits.length === 4) {
+        return [
+          parseInt(expand(digits[0]), 16),
+          parseInt(expand(digits[1]), 16),
+          parseInt(expand(digits[2]), 16),
+        ];
+      }
+
+      if (digits.length === 6 || digits.length === 8) {
+        return [
+          parseInt(digits.slice(0, 2), 16),
+          parseInt(digits.slice(2, 4), 16),
+          parseInt(digits.slice(4, 6), 16),
+        ];
+      }
+    }
+
+    const rgb = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (rgb) {
+      return [
+        parseInt(rgb[1], 10),
+        parseInt(rgb[2], 10),
+        parseInt(rgb[3], 10),
+      ];
+    }
+
+    return null;
+  }
+
+  function _isDarkCssColor(color) {
+    const rgb = _parseCssColor(color);
+    if (!rgb) return false;
+
+    const [r, g, b] = rgb.map((channel) => channel / 255);
+    const luminance =
+      0.2126 * r +
+      0.7152 * g +
+      0.0722 * b;
+
+    return luminance < 0.45;
+  }
+
+  function _readGithubThemeColorVar(varName) {
+    const root = document.documentElement;
+    const body = document.body;
+    const candidates = [root, body].filter(Boolean);
+
+    for (const node of candidates) {
+      const value = window.getComputedStyle(node).getPropertyValue(varName).trim();
+      if (value) return value;
+    }
+
+    return "";
+  }
 
   function _isGitHubDarkMode() {
     if (typeof document === "undefined") return false;
@@ -376,13 +441,25 @@
     });
     if (matchingSelector) return true;
 
+    const canvasColor = _readGithubThemeColorVar("--color-canvas-default");
+    if (canvasColor) return _isDarkCssColor(canvasColor);
+
+    const bgColor = body ? window.getComputedStyle(body).backgroundColor : "";
+    if (bgColor) return _isDarkCssColor(bgColor);
+
     return false;
   }
 
   function _syncThemeMode() {
     const root = document.documentElement;
     if (!root) return;
-    root.classList.toggle(THEME_DARK_CLASS, _isGitHubDarkMode());
+    const isDark = _isGitHubDarkMode();
+    root.classList.toggle(THEME_DARK_CLASS, isDark);
+
+    if (_lastLoggedThemeMode !== isDark) {
+      _lastLoggedThemeMode = isDark;
+      console.log(`[MD Review] GitHub dark mode detected: ${isDark ? "dark" : "light"}`);
+    }
   }
 
   function _installThemeObserver() {
@@ -1587,12 +1664,20 @@
     });
 
     // Add extension icon
-    const iconUrl = chrome.runtime.getURL("icons/icon32.png");
     const img = createElement("img", {
       className: "md-review-active-indicator__icon",
     });
-    img.src = iconUrl;
-    badge.appendChild(img);
+    const iconUrl = (() => {
+      try {
+        return chrome?.runtime?.getURL ? chrome.runtime.getURL("icons/icon32.png") : "";
+      } catch {
+        return "";
+      }
+    })();
+    if (iconUrl) {
+      img.src = iconUrl;
+      badge.appendChild(img);
+    }
 
     const textSpan = createElement("span", {
       className: "md-review-active-indicator__text",

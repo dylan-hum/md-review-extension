@@ -56,6 +56,7 @@
   --md-review-active-paused-border: #30363d;
   --md-review-active-paused-text: #8b949e;
   --md-review-active-paused-shadow: 0 3px 10px rgba(72, 79, 88, 0.3);
+  --md-review-selected-line-bg: #243043;
 }
 
 /* ---------- Clickable rich diff article ---------- */
@@ -279,5 +280,18 @@ tr.md-review-commented-line > td {
 tr.md-review-selected-line > td,
 td.md-review-selected-line,
 a.md-review-selected-line {
-  background: var(--md-review-selected-line-bg) !important;
+  background-color: var(--md-review-selected-line-bg) !important;
+}
+
+:root.md-review-theme-dark tr.md-review-selected-line > td,
+:root.md-review-theme-dark td.md-review-selected-line,
+:root.md-review-theme-dark a.md-review-selected-line,
+:root[data-color-mode="dark"] tr.md-review-selected-line > td,
+:root[data-color-mode="dark"] td.md-review-selected-line,
+:root[data-color-mode="dark"] a.md-review-selected-line,
+:root.dark tr.md-review-selected-line > td,
+:root.dark td.md-review-selected-line,
+:root.dark a.md-review-selected-line {
+  background-color: #243043 !important;
+  color: #f0f6fc !important;
 }
