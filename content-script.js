@@ -783,7 +783,7 @@
   const _pendingRichScrollByDigest = new Map();
   const _pendingSourceLineByDigest = new Map();
   const _pendingRichViewLoads = new Map();
-  const _installedViewToggleHandlers = new WeakSet();
+  const _installedToggleButtons = new WeakSet();
 
   function _getTopVisibleSourceLine(fileContainer) {
     const candidates = [
@@ -943,35 +943,40 @@
   }
 
   function _installNativeViewToggleHandlers(fileContainer, pathDigest) {
-    if (_installedViewToggleHandlers.has(fileContainer)) return;
-    _installedViewToggleHandlers.add(fileContainer);
+    const attachToButton = (button, kind) => {
+      if (!(button instanceof HTMLElement)) return;
+      if (_installedToggleButtons.has(button)) return;
+      _installedToggleButtons.add(button);
 
-    fileContainer.addEventListener("click", (event) => {
-      const clicked = event.target?.closest?.("button, [role='tab'], a");
-      if (!(clicked instanceof HTMLElement)) return;
-
-      const label = _getControlLabel(clicked);
-      if (!label) return;
-
-      if (label.includes("source") || label === "code" || label.includes("source diff") || label.includes("code diff")) {
-        if (!_isRichDiffVisible(fileContainer)) return;
-        const article = qs("article", fileContainer);
-        const pendingLine = _pendingSourceLineByDigest.get(pathDigest);
-        const topRichLine = Number.isInteger(pendingLine) && pendingLine > 0
-          ? pendingLine
-          : _getTopVisibleRichLine(article);
-        if (Number.isInteger(topRichLine) && topRichLine > 0) {
-          _queueSourceViewFocus(pathDigest, topRichLine);
+      const onPress = () => {
+        if (kind === "source") {
+          if (!_isRichDiffVisible(fileContainer)) return;
+          const article = qs("article", fileContainer);
+          const pendingLine = _pendingSourceLineByDigest.get(pathDigest);
+          const topRichLine = Number.isInteger(pendingLine) && pendingLine > 0
+            ? pendingLine
+            : _getTopVisibleRichLine(article);
+          if (Number.isInteger(topRichLine) && topRichLine > 0) {
+            _queueSourceViewFocus(pathDigest, topRichLine);
+          }
         }
-      }
 
-      if (label.includes("rich") || label.includes("render")) {
-        const topLine = _getTopVisibleSourceLine(fileContainer);
-        if (Number.isInteger(topLine) && topLine > 0) {
-          _queueRichViewScroll(pathDigest, topLine);
+        if (kind === "rich") {
+          if (!_isSourceDiffVisible(fileContainer)) return;
+          const topLine = _getTopVisibleSourceLine(fileContainer);
+          if (Number.isInteger(topLine) && topLine > 0) {
+            _queueRichViewScroll(pathDigest, topLine);
+          }
         }
-      }
-    }, true);
+      };
+
+      button.addEventListener("pointerdown", onPress, true);
+      button.addEventListener("mousedown", onPress, true);
+      button.addEventListener("click", onPress, true);
+    };
+
+    attachToButton(_getSourceDiffButton(fileContainer), "source");
+    attachToButton(_getRichDiffButton(fileContainer), "rich");
   }
 
   function _maybeAutoLoadRichView(fileContainer, pathDigest) {
