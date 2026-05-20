@@ -66,6 +66,16 @@
   overflow: visible;
 }
 
+.md-review-clickable,
+.md-review-clickable * {
+  text-decoration-line: none !important;
+  text-decoration-style: solid !important;
+}
+
+.md-review-clickable a:hover {
+  text-decoration: underline !important;
+}
+
 .md-review-line-annotated,
 .md-review-line-has-comments {
   position: relative;
