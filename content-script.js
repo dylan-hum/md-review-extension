@@ -783,6 +783,7 @@
   const _pendingRichScrollByDigest = new Map();
   const _pendingSourceLineByDigest = new Map();
   const _pendingRichViewLoads = new Map();
+  const _suppressedRichClickLoads = new Set();
   const _installedToggleButtons = new WeakSet();
 
   function _getTopVisibleSourceLine(fileContainer) {
@@ -895,7 +896,7 @@
 
     const applied = target.getBoundingClientRect().height > 0;
     if (applied) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.scrollIntoView({ behavior: "auto", block: "start" });
       _pendingRichScrollByDigest.delete(pathDigest);
       return true;
     }
@@ -949,6 +950,8 @@
       _installedToggleButtons.add(button);
 
       const onPress = () => {
+        if (kind === "rich" && _suppressedRichClickLoads.has(pathDigest)) return;
+
         if (kind === "source") {
           if (!_isRichDiffVisible(fileContainer)) return;
           const article = qs("article", fileContainer);
@@ -991,7 +994,12 @@
     if (now - lastAttempt < 1200) return;
 
     _pendingRichViewLoads.set(pathDigest, now);
-    richBtn.click();
+    _suppressedRichClickLoads.add(pathDigest);
+    try {
+      richBtn.click();
+    } finally {
+      setTimeout(() => _suppressedRichClickLoads.delete(pathDigest), 0);
+    }
   }
 
   function _getPreferredDiffHeaderRow(fileContainer) {
@@ -1122,7 +1130,7 @@
     const row = target.closest("tr") || target;
 
     if (shouldScroll) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.scrollIntoView({ behavior: "auto", block: "center" });
     }
 
     row.classList.add(SOURCE_SELECTED_LINE_CLASS);
@@ -1163,7 +1171,7 @@
 
       if (Date.now() - startedAt >= timeoutMs) {
         const fileAnchor = document.getElementById(`diff-${pathDigest}`);
-        (fileAnchor || fileContainer).scrollIntoView({ behavior: "smooth", block: "start" });
+        (fileAnchor || fileContainer).scrollIntoView({ behavior: "auto", block: "start" });
         cleanup();
         return true;
       }
@@ -1193,7 +1201,7 @@
       attempts++;
 
       if (!lineNum) {
-        fileContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+        fileContainer.scrollIntoView({ behavior: "auto", block: "start" });
         return;
       }
 
@@ -1204,7 +1212,7 @@
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(tryFocus, 350);
+          setTimeout(tryFocus, 180);
           return;
         }
       }
@@ -1223,14 +1231,14 @@
 
       if (attempts < maxAttempts) {
         const expanded = _expandCollapsedSourceSections(fileContainer);
-        setTimeout(tryFocus, expanded ? 500 : 250);
+        setTimeout(tryFocus, expanded ? 280 : 140);
         return;
       }
 
       _watchForLazySourceLine(fileContainer, pathDigest, lineNum);
     }
 
-    setTimeout(tryFocus, 250);
+    setTimeout(tryFocus, 120);
   }
 
   function _isRichDiffVisible(fileContainer) {
@@ -1257,7 +1265,7 @@
         }
 
         if (attempts < maxAttempts) {
-          setTimeout(tryOpenSourceAndFocus, 250);
+          setTimeout(tryOpenSourceAndFocus, 120);
           return;
         }
       }
