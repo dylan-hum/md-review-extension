@@ -355,11 +355,14 @@
   }
 
   const THEME_DARK_CLASS = "md-review-theme-dark";
+  const THEME_MODE_STORAGE_KEY = "md-review-theme-mode";
   const GITHUB_DARK_MODE_SELECTORS = [
     "[data-color-mode='dark']",
     ".dark",
   ];
+  const DEFAULT_THEME_MODE = "auto";
   let _lastLoggedThemeMode = null;
+  let _themeMode = DEFAULT_THEME_MODE;
 
   function _parseCssColor(color) {
     const value = String(color || "").trim().toLowerCase();
@@ -450,20 +453,48 @@
     return false;
   }
 
+  function _normalizeThemeMode(value) {
+    const mode = String(value || "").toLowerCase();
+    return mode === "light" || mode === "dark" ? mode : "auto";
+  }
+
+  function _getThemeMode() {
+    return _themeMode;
+  }
+
+  function _setThemeMode(value) {
+    _themeMode = _normalizeThemeMode(value);
+    _syncThemeMode();
+  }
+
+  function _loadThemeModePreference() {
+    if (!chrome?.storage?.local?.get) return;
+    chrome.storage.local.get({ [THEME_MODE_STORAGE_KEY]: DEFAULT_THEME_MODE }, (items) => {
+      if (chrome.runtime?.lastError) return;
+      _setThemeMode(items?.[THEME_MODE_STORAGE_KEY]);
+    });
+  }
+
   function _syncThemeMode() {
     const root = document.documentElement;
     if (!root) return;
-    const isDark = _isGitHubDarkMode();
+    const mode = _getThemeMode();
+    const isDark = mode === "dark" ? true : mode === "light" ? false : _isGitHubDarkMode();
     root.classList.toggle(THEME_DARK_CLASS, isDark);
 
-    if (_lastLoggedThemeMode !== isDark) {
+    if (_lastLoggedThemeMode !== isDark || _lastLoggedThemeMode === null) {
       _lastLoggedThemeMode = isDark;
-      console.log(`[MD Review] GitHub dark mode detected: ${isDark ? "dark" : "light"}`);
+      const label = mode === "auto"
+        ? `GitHub dark mode detected: ${isDark ? "dark" : "light"}`
+        : `Theme forced: ${mode}`;
+      console.log(`[MD Review] ${label}`);
     }
   }
 
   function _installThemeObserver() {
     _syncThemeMode();
+
+    _loadThemeModePreference();
 
     const observer = new MutationObserver(() => {
       _syncThemeMode();
@@ -490,6 +521,15 @@
     document.addEventListener("DOMContentLoaded", _syncThemeMode, { once: true });
     document.addEventListener("turbo:load", _syncThemeMode);
     document.addEventListener("pjax:end", _syncThemeMode);
+
+    if (chrome?.storage?.onChanged) {
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName !== "local") return;
+        const change = changes?.[THEME_MODE_STORAGE_KEY];
+        if (!change) return;
+        _setThemeMode(change.newValue);
+      });
+    }
   }
 
   function _createCommentBadgeIcon(size = 16) {

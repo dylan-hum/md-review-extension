@@ -1,25 +1,46 @@
 const SCROLL_BEHAVIOR_STORAGE_KEY = "md-review-scroll-behavior";
+const THEME_MODE_STORAGE_KEY = "md-review-theme-mode";
 
-function setSmoothEnabled(enabled) {
-  const value = enabled ? "smooth" : "auto";
-  chrome.storage.local.set({ [SCROLL_BEHAVIOR_STORAGE_KEY]: value });
+function setOption(key, value) {
+  chrome.storage.local.set({ [key]: value });
 }
 
 function loadState() {
-  chrome.storage.local.get({ [SCROLL_BEHAVIOR_STORAGE_KEY]: "auto" }, (items) => {
-    const smooth = items[SCROLL_BEHAVIOR_STORAGE_KEY] === "smooth";
-    const checkbox = document.getElementById("smooth-scroll");
-    if (checkbox) checkbox.checked = smooth;
-  });
+  chrome.storage.local.get(
+    {
+      [SCROLL_BEHAVIOR_STORAGE_KEY]: "auto",
+      [THEME_MODE_STORAGE_KEY]: "auto",
+    },
+    (items) => {
+      const scrollCheckbox = document.getElementById("smooth-scroll");
+      if (scrollCheckbox) {
+        scrollCheckbox.checked = items[SCROLL_BEHAVIOR_STORAGE_KEY] === "smooth";
+      }
+
+      const themeSelect = document.getElementById("theme-mode");
+      if (themeSelect) {
+        themeSelect.value = items[THEME_MODE_STORAGE_KEY] === "light" || items[THEME_MODE_STORAGE_KEY] === "dark"
+          ? items[THEME_MODE_STORAGE_KEY]
+          : "auto";
+      }
+    }
+  );
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const checkbox = document.getElementById("smooth-scroll");
-  if (!checkbox) return;
+  const scrollCheckbox = document.getElementById("smooth-scroll");
+  if (scrollCheckbox) {
+    scrollCheckbox.addEventListener("change", () => {
+      setOption(SCROLL_BEHAVIOR_STORAGE_KEY, scrollCheckbox.checked ? "smooth" : "auto");
+    });
+  }
 
-  checkbox.addEventListener("change", () => {
-    setSmoothEnabled(checkbox.checked);
-  });
+  const themeSelect = document.getElementById("theme-mode");
+  if (themeSelect) {
+    themeSelect.addEventListener("change", () => {
+      setOption(THEME_MODE_STORAGE_KEY, themeSelect.value);
+    });
+  }
 
   loadState();
 });
