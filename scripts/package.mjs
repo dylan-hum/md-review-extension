@@ -26,6 +26,8 @@ const INCLUDE = [
   "utils/",
   "styles/",
   "icons/",
+  "popup.html",
+  "popup.js",
   "LICENSE",
 ];
 
@@ -163,4 +165,3 @@ const zipPath = join(DIST, zipName);
 writeFileSync(zipPath, zipBuffer);
 
 console.log(`\n✅ Extension packaged: ${zipPath} (${(zipBuffer.length / 1024).toFixed(1)} KB)`);
-

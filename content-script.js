@@ -785,6 +785,40 @@
   const _pendingRichViewLoads = new Map();
   const _suppressedRichClickLoads = new Set();
   const _installedToggleButtons = new WeakSet();
+  const SCROLL_BEHAVIOR_STORAGE_KEY = "md-review-scroll-behavior";
+  const DEFAULT_SCROLL_BEHAVIOR = "auto";
+  let _scrollBehavior = DEFAULT_SCROLL_BEHAVIOR;
+
+  function _normalizeScrollBehavior(value) {
+    return value === "smooth" ? "smooth" : "auto";
+  }
+
+  function _getScrollBehavior() {
+    return _scrollBehavior;
+  }
+
+  function _setScrollBehavior(value) {
+    _scrollBehavior = _normalizeScrollBehavior(value);
+  }
+
+  function _loadScrollBehaviorPreference() {
+    if (!chrome?.storage?.local?.get) return;
+    chrome.storage.local.get({ [SCROLL_BEHAVIOR_STORAGE_KEY]: DEFAULT_SCROLL_BEHAVIOR }, (items) => {
+      if (chrome.runtime?.lastError) return;
+      _setScrollBehavior(items?.[SCROLL_BEHAVIOR_STORAGE_KEY]);
+    });
+  }
+
+  if (chrome?.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local") return;
+      const change = changes?.[SCROLL_BEHAVIOR_STORAGE_KEY];
+      if (!change) return;
+      _setScrollBehavior(change.newValue);
+    });
+  }
+
+  _loadScrollBehaviorPreference();
 
   function _getTopVisibleSourceLine(fileContainer) {
     const candidates = [
@@ -896,7 +930,7 @@
 
     const applied = target.getBoundingClientRect().height > 0;
     if (applied) {
-      target.scrollIntoView({ behavior: "auto", block: "start" });
+      target.scrollIntoView({ behavior: _getScrollBehavior(), block: "start" });
       _pendingRichScrollByDigest.delete(pathDigest);
       return true;
     }
@@ -1130,7 +1164,7 @@
     const row = target.closest("tr") || target;
 
     if (shouldScroll) {
-      row.scrollIntoView({ behavior: "auto", block: "center" });
+      row.scrollIntoView({ behavior: _getScrollBehavior(), block: "center" });
     }
 
     row.classList.add(SOURCE_SELECTED_LINE_CLASS);
@@ -1171,7 +1205,7 @@
 
       if (Date.now() - startedAt >= timeoutMs) {
         const fileAnchor = document.getElementById(`diff-${pathDigest}`);
-        (fileAnchor || fileContainer).scrollIntoView({ behavior: "auto", block: "start" });
+        (fileAnchor || fileContainer).scrollIntoView({ behavior: _getScrollBehavior(), block: "start" });
         cleanup();
         return true;
       }
@@ -1201,7 +1235,7 @@
       attempts++;
 
       if (!lineNum) {
-        fileContainer.scrollIntoView({ behavior: "auto", block: "start" });
+        fileContainer.scrollIntoView({ behavior: _getScrollBehavior(), block: "start" });
         return;
       }
 
