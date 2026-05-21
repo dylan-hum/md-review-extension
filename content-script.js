@@ -1519,6 +1519,8 @@
       if (e.target.closest("a[href]:not(.md-review-code-link)")) return;
       if (e.target.closest(`.${BADGE_CLASS}`)) return;
       if (e.target.closest(".md-review-comment-bar")) return;
+      if (e.target.closest('summary[role="button"][aria-haspopup="dialog"]')) return;
+      if (e.target.closest('button[aria-haspopup="dialog"], [role="button"][aria-haspopup="dialog"]')) return;
 
       e.preventDefault();
       e.stopPropagation();
