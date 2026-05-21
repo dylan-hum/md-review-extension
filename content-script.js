@@ -1865,18 +1865,47 @@
 
   const INIT_ATTR = "data-md-review-initialized";
   const AUTO_RICH_ATTR = "data-md-review-auto-rich-attempted";
-  const ACTIVE_INDICATOR_ID = "md-review-active-indicator";
   const TOGGLE_STORAGE_KEY = "md-review-extension-enabled";
+  const DEFAULT_EXTENSION_ENABLED = true;
+  let _extensionEnabled = DEFAULT_EXTENSION_ENABLED;
+  let _extensionStateLoaded = false;
 
   _installThemeObserver();
   _installCommentActivityTracking();
+  _loadExtensionEnabledPreference();
 
   function _isExtensionEnabled() {
-    return sessionStorage.getItem(TOGGLE_STORAGE_KEY) !== "false";
+    return _extensionEnabled;
   }
 
-  function _setExtensionEnabled(enabled) {
-    sessionStorage.setItem(TOGGLE_STORAGE_KEY, enabled ? "true" : "false");
+  function _loadExtensionEnabledPreference() {
+    if (!chrome?.storage?.local?.get) {
+      _extensionStateLoaded = true;
+      _applyExtensionEnabledState();
+      return;
+    }
+
+    chrome.storage.local.get({ [TOGGLE_STORAGE_KEY]: DEFAULT_EXTENSION_ENABLED }, (items) => {
+      if (chrome.runtime?.lastError) {
+        _extensionStateLoaded = true;
+        _applyExtensionEnabledState();
+        return;
+      }
+
+      _extensionEnabled = items?.[TOGGLE_STORAGE_KEY] !== false;
+      _extensionStateLoaded = true;
+      _applyExtensionEnabledState();
+    });
+  }
+
+  if (chrome?.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local") return;
+      const change = changes?.[TOGGLE_STORAGE_KEY];
+      if (!change) return;
+      _extensionEnabled = change.newValue !== false;
+      _applyExtensionEnabledState();
+    });
   }
 
   let _pauseInProgress = false;
@@ -1925,84 +1954,39 @@
     setTimeout(() => { _pauseInProgress = false; }, 200);
   }
 
-  function _ensureActivityIndicator(isVisible) {
-    const existing = document.getElementById(ACTIVE_INDICATOR_ID);
+  function _updateActionIcon(isRelevantPage) {
+    const active = Boolean(isRelevantPage && _isExtensionEnabled());
+    try {
+      chrome?.runtime?.sendMessage?.({ type: "md-review-set-icon", active });
+    } catch {
+      // Ignore icon update failures in page contexts where the runtime bridge is unavailable.
+    }
+  }
 
-    if (!isVisible) {
-      if (existing) existing.remove();
+  function _applyExtensionEnabledState() {
+    if (!_extensionStateLoaded) return;
+
+    if (!_isExtensionEnabled()) {
+      _removeAllEnhancements();
+      _updateActionIcon(false);
       return;
     }
 
-    const enabled = _isExtensionEnabled();
-    const labelText = enabled
-      ? "Markdown Review Extension active"
-      : "Markdown Review Extension paused";
-
-    if (existing) {
-      const textNode = existing.querySelector(".md-review-active-indicator__text");
-      if (textNode) textNode.textContent = labelText;
-      existing.title = `Click to ${enabled ? "pause" : "resume"} the extension`;
-      existing.classList.toggle("md-review-active-indicator--paused", !enabled);
-      return;
-    }
-
-    const badge = createElement("div", {
-      id: ACTIVE_INDICATOR_ID,
-      className: `md-review-active-indicator${enabled ? "" : " md-review-active-indicator--paused"}`,
-      title: `Click to ${enabled ? "pause" : "resume"} the extension`,
-      "aria-label": labelText,
-    });
-
-    // Add extension icon
-    const img = createElement("img", {
-      className: "md-review-active-indicator__icon",
-    });
-    const iconUrl = (() => {
-      try {
-        return chrome?.runtime?.getURL ? chrome.runtime.getURL("icons/icon32.png") : "";
-      } catch {
-        return "";
-      }
-    })();
-    if (iconUrl) {
-      img.src = iconUrl;
-      badge.appendChild(img);
-    }
-
-    const textSpan = createElement("span", {
-      className: "md-review-active-indicator__text",
-      textContent: labelText,
-    });
-    badge.appendChild(textSpan);
-
-    badge.addEventListener("click", () => {
-      const nowEnabled = !_isExtensionEnabled();
-      _setExtensionEnabled(nowEnabled);
-
-      if (!nowEnabled) {
-        _removeAllEnhancements();
-      }
-
-      _ensureActivityIndicator(true);
-
-      if (nowEnabled) {
-        setTimeout(processFiles, 50);
-      }
-    });
-
-    document.body.appendChild(badge);
+    setTimeout(processFiles, 50);
   }
 
   function processFiles() {
+    if (!_extensionStateLoaded) return;
+
     if (!isPRFilesPage()) {
-      _ensureActivityIndicator(false);
+      _updateActionIcon(false);
       return;
     }
 
     let hasMarkdownFiles = false;
 
     if (!_isExtensionEnabled()) {
-      _ensureActivityIndicator(true);
+      _updateActionIcon(false);
       return;
     }
 
@@ -2062,7 +2046,7 @@
       _enhanceRichDiff(container, markersMap, pathDigest, filePath);
     }
 
-    _ensureActivityIndicator(hasMarkdownFiles);
+    _updateActionIcon(hasMarkdownFiles);
   }
 
   /* ---------------------------------------------------------------- */

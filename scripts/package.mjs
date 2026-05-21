@@ -22,6 +22,7 @@ const zipName = `markdown-rich-review-${version}.zip`;
 // Files/directories to include in the extension package
 const INCLUDE = [
   "manifest.json",
+  "background.js",
   "content-script.js",
   "utils/",
   "styles/",

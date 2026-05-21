@@ -237,52 +237,6 @@
   flex-shrink: 0;
 }
 
-.md-review-active-indicator {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border: 2px solid var(--md-review-active-border);
-  border-radius: 999px;
-  background: var(--md-review-active-bg);
-  color: var(--md-review-active-text);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  box-shadow: var(--md-review-active-shadow);
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
-}
-
-.md-review-active-indicator__icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
-  background: var(--md-review-active-icon-bg);
-  padding: 1px;
-  flex-shrink: 0;
-}
-
-.md-review-active-indicator__text {
-  white-space: nowrap;
-}
-
-.md-review-active-indicator:hover {
-  opacity: 0.85;
-}
-
-.md-review-active-indicator--paused {
-  background: var(--md-review-active-paused-bg);
-  border-color: var(--md-review-active-paused-border);
-  color: var(--md-review-active-paused-text);
-  box-shadow: var(--md-review-active-paused-shadow);
-}
-
 tr.md-review-commented-line > td {
   box-shadow: inset 3px 0 0 var(--md-review-commented-line-inset);
 }
